@@ -32,7 +32,7 @@ public class QLDatacenterBroker extends DatacenterBroker {
         float gamma = 0.1f;
         float alpha = 0.9f;
         Double epsilon = 1.0;
-        Double decay = 0.01;
+        Double decay = 0.1;
         Vm vm = vmList.get(0);
         Double[] qMatrix = new Double[reqVms];
         int[] rewardMatrix = new int[reqVms];
