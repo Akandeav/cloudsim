@@ -14,48 +14,81 @@ public class QLDatacenterBroker extends DatacenterBroker {
     public QLDatacenterBroker(String name) throws Exception {
         super(name);
     }
+    public int randomInt(int min, int max){
+        return (int)(Math.random()*(max-min+1)+min);
+    }
+    public Double computeQValue(float g, float a, Double q, Double max, int r){
+        Double qValue;
+        qValue = (q * (1 - a)) + (a * (r + (g * max)));
+        return qValue;
+    }
 
     public void scheduleTaskstoVms() {
         int reqTasks = cloudletList.size();
         int reqVms = vmList.size();
         int maxIndex = 0;
         int minIndex = 0;
+        int maxQ = 0;
         float gamma = 0.1f;
         float alpha = 0.9f;
+        Double epsilon = 1.0;
+        Double decay = 0.01;
         Vm vm = vmList.get(0);
-        float[] qMatrix = new float[reqVms];
+        Double[] qMatrix = new Double[reqVms];
         int[] rewardMatrix = new int[reqVms];
         Double[] cpuMatrix = new Double[reqVms];
-
+        
         for(int i = 0; i < reqVms; i++){
-            qMatrix[i] = 0;
-            vm = vmList.get(i);
-            cpuMatrix[i] = vm.getTotalUtilizationOfCpu();
+            qMatrix[i] = 0.0;
+            
         }
-        for (int i = 0; i < reqVms; i++){
-            Double temp = cpuMatrix[i];
-            if (temp > cpuMatrix[maxIndex]){
-                maxIndex = i;
+        
+        
+        for (int i = 0; i < reqTasks; i++){
+            int n = randomInt(0, 1);
+            for (int j = 0; j < reqVms; j++){
+                vm = vmList.get(j);
+                cpuMatrix[j] = vm.getCpuUtilization();
+                rewardMatrix[j] = 0;
+                Double temp = cpuMatrix[j];
+                Double qtemp = qMatrix[j];
+                if (temp > cpuMatrix[maxIndex]){
+                    maxIndex = j;
+                }
+                if (temp < cpuMatrix[minIndex]){
+                    minIndex = j;
+                }
+                if (qtemp > qMatrix[j]){
+                    maxQ = j;
+                }
+                
             }
-            if (temp < cpuMatrix[minIndex]){
-                minIndex = i;
+            rewardMatrix[maxIndex] = -10;
+            rewardMatrix[minIndex] = 100;
+            if (n < epsilon){
+                Log.printLine("===Exploitation===");
+                int action = randomInt(0, reqVms);
+                qMatrix[action] = computeQValue(gamma, alpha, qMatrix[action], qMatrix[maxQ], rewardMatrix[action]);
+                bindCloudletToVm(i, action);
+                System.out.println("Task" + cloudletList.get(i).getCloudletId() + " is bound with VM" + vmList.get(action).getId());   
+                epsilon = epsilon - (epsilon*decay);             
+
+            }
+            else{
+                Log.printLine("===Exploration===");
+                qMatrix[maxQ] = computeQValue(gamma, alpha, qMatrix[maxQ], qMatrix[maxQ], rewardMatrix[maxQ]);
+                bindCloudletToVm(i, maxQ);
+                System.out.println("Task" + cloudletList.get(i).getCloudletId() + " is bound with VM" + vmList.get(maxQ).getId());   
+                epsilon = epsilon - (epsilon*decay);
             }
         }
-        for (int i = 0; i < reqVms; i++){
-            if (i == maxIndex){
-                rewardMatrix[i] = -10;
-            }
-            if (i == minIndex){
-                rewardMatrix[i] = 100;
-            }
-        }
-        for (int i = 0; i < reqVms; i++){
-            qMatrix[i] = (qMatrix[i] * (1 - alpha)) + (alpha * (rewardMatrix[i] + (gamma * qMatrix[maxIndex])));
-        }
+    
+        
+        /*
         for (int i = 0; i < reqTasks; i++) {
             bindCloudletToVm(i, (i % reqVms));
             System.out.println("Task" + cloudletList.get(i).getCloudletId() + " is bound with VM" + vmList.get(i % reqVms).getId());
-        }
+        } */
 
         //System.out.println("reqTasks: "+ reqTasks);
 
