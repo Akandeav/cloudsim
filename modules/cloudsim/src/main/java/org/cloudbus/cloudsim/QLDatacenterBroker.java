@@ -5,11 +5,14 @@ import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.core.CloudSimTags;
 import org.cloudbus.cloudsim.core.SimEvent;
 import org.cloudbus.cloudsim.lists.VmList;
+import org.cloudbus.cloudsim.util.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class QLDatacenterBroker extends DatacenterBroker {
+    
 
     public QLDatacenterBroker(String name) throws Exception {
         super(name);
@@ -21,6 +24,76 @@ public class QLDatacenterBroker extends DatacenterBroker {
         Double qValue;
         qValue = (q * (1 - a)) + (a * (r + (g * max)));
         return qValue;
+    }
+
+    public int getVmIndexUsingQlearning(){
+        int chosenVm;
+        Vm vm;
+        int reqVms = getVmsCreatedList().size();
+        int maxIndex = 0;
+        int minIndex = 0;
+        int maxQ = 0;
+        float gamma = 0.1f;
+        float alpha = 0.9f;
+        Double epsilon = 1.0;
+        Double decay = 0.1;
+        Double[] qMatrix = new Double[reqVms];
+        int[] rewardMatrix = new int[reqVms];
+        Double[] cpuMatrix = new Double[reqVms];
+
+        for(int i = 0; i < reqVms; i++){
+            qMatrix[i] = 0.0;    
+        }
+
+        // Compute Reward Matrices
+        for (int j = 0; j < reqVms; j++){
+            vm = vmList.get(j);
+            cpuMatrix[j] = vm.getCpuUtilization();
+            //Log.printLine(vm.getCpuUtilization());
+            rewardMatrix[j] = 0;
+            Double temp = cpuMatrix[j];
+            Double qtemp = qMatrix[j];
+            if (temp > cpuMatrix[maxIndex]){
+                maxIndex = j;
+            }
+            if (temp < cpuMatrix[minIndex]){
+                minIndex = j;
+            }
+            if (qtemp > qMatrix[j]){
+                maxQ = j;
+            }
+            
+        }
+        int n = randomInt(0, 1);
+        rewardMatrix[maxIndex] = -10;
+        rewardMatrix[minIndex] = 100;
+        if (n < epsilon){
+            Log.printLine("===Exploitation===");
+            int action = randomInt(0, reqVms - 1);
+            qMatrix[action] = computeQValue(gamma, alpha, qMatrix[action], qMatrix[maxQ], rewardMatrix[action]);
+            chosenVm = action;
+            //System.out.println("Task" + cloudletList.get(i).getCloudletId() + " is bound with VM" + vmList.get(action).getId());   
+            epsilon = epsilon - (epsilon*decay);             
+
+        }
+        else{
+            Log.printLine("===Exploration===");
+            qMatrix[maxQ] = computeQValue(gamma, alpha, qMatrix[maxQ], qMatrix[maxQ], rewardMatrix[maxQ]);
+            chosenVm = maxQ;
+            
+            //System.out.println("Task" + cloudletList.get(i).getCloudletId() + " is bound with VM" + vmList.get(maxQ).getId());   
+            epsilon = epsilon - (epsilon*decay);
+        }
+        return chosenVm;
+    }
+
+    public boolean isFailoverNeeded(int vmIndex){
+        // Checks the cpu utilization of the 
+        Vm vm = vmList.get(vmIndex);
+        if (vm.getCpuUtilization() >= 90.0){
+            return true;
+        }
+        return false;
     }
 
     public void scheduleTaskstoVms() {
@@ -37,12 +110,10 @@ public class QLDatacenterBroker extends DatacenterBroker {
         Double[] qMatrix = new Double[reqVms];
         int[] rewardMatrix = new int[reqVms];
         Double[] cpuMatrix = new Double[reqVms];
-        Log.printLine("number of loops " + Integer.toString(reqTasks));
+        
         for(int i = 0; i < reqVms; i++){
             qMatrix[i] = 0.0;    
-        }
-        
-        
+        }    
         for (int i = 0; i < reqTasks; i++){
             
             int n = randomInt(0, 1);
@@ -158,6 +229,8 @@ public class QLDatacenterBroker extends DatacenterBroker {
     @Override
 	protected void submitCloudlets() {
 		int vmIndex = 0;
+        int numberOfFailover = 0;
+
 		List<Cloudlet> successfullySubmitted = new ArrayList<Cloudlet>();
 		for (Cloudlet cloudlet : getCloudletList()) {
 			Vm vm;
@@ -177,23 +250,38 @@ public class QLDatacenterBroker extends DatacenterBroker {
 					continue;
 				}
 			}
-
+            
+            int qVmIndex = getVmIndexUsingQlearning();
+            if (isFailoverNeeded(qVmIndex)) {
+                // If there is a failover use the Round robin algorithm for load balancing
+                Log.printLine("Failover on VM: #" + Integer.toString(qVmIndex + 2));
+                qVmIndex = (vmIndex + 1) % getVmsCreatedList().size();
+                numberOfFailover++;
+            }
+            Log.printLine("==VM==" + Integer.toString(qVmIndex + 2));
+            vm = getVmsCreatedList().get(qVmIndex);
+            cloudlet.setVmId(vm.getId());
+            sendNow(getVmsToDatacentersMap().get(vm.getId()), CloudSimTags.CLOUDLET_SUBMIT, cloudlet);
+			
 			if (!Log.isDisabled()) {
-                Log.printConcatLine("vm utilization" + vm.getTotalUtilizationOfCpu(System.currentTimeMillis()));
 			    Log.printConcatLine(CloudSim.clock(), ": ", getName(), ": Sending cloudlet ",
 					cloudlet.getCloudletId(), " to VM #", vm.getId());
 			}
-			
-			cloudlet.setVmId(vm.getId());
-			sendNow(getVmsToDatacentersMap().get(vm.getId()), CloudSimTags.CLOUDLET_SUBMIT, cloudlet);
+            
 			cloudletsSubmitted++;
-			vmIndex = (vmIndex + 1) % getVmsCreatedList().size();
+            vmIndex = (vmIndex + 1) % getVmsCreatedList().size();
 			getCloudletSubmittedList().add(cloudlet);
 			successfullySubmitted.add(cloudlet);
+			
+			
 		}
 
 		// remove submitted cloudlets from waiting list
 		getCloudletList().removeAll(successfullySubmitted);
+        double failoverRate = (Double.valueOf(numberOfFailover) / Constants.NO_OF_TASKS) * 100;
+        Log.printLine("=*********=");
+        Log.printLine("number of failovers: " + numberOfFailover + " failover rate: " + failoverRate);
+        Log.printLine("=*********=");
 	}
 
 
@@ -259,4 +347,6 @@ public class QLDatacenterBroker extends DatacenterBroker {
         setVmsRequested(numberOfVmsAllocated);
         setVmsAcks(0);
     }
+
+    
 }
