@@ -18,7 +18,7 @@ public class QL_Scheduler {
     private static double[][] commMatrix;
     private static double[][] execMatrix;
 
-    private static List<Vm> createVM(int userId, int vms) {
+    private static List<Vm> createVM(int userId, int dcs, int vms) {
         //Creates a container to store VMs. This list is passed to the broker later
         LinkedList<Vm> list = new LinkedList<Vm>();
 
@@ -32,12 +32,14 @@ public class QL_Scheduler {
 
         //create VMs
         Vm[] vm = new Vm[vms];
-
+        int j = 0;
         for (int i = 0; i < vms; i++) {
+            if (j == dcs) j = 0;
+            Log.printLine("dc" + Integer.toString(j));
             vm[i] = new Vm(datacenter[i].getId(), userId, mips, pesNumber, ram, bw, size, vmm, new CloudletSchedulerSpaceShared());
             list.add(vm[i]);
+            j++;
         }
-
         return list;
     }
 
@@ -96,7 +98,7 @@ public class QL_Scheduler {
             int brokerId = broker.getId();
 
             //Fourth step: Create VMs and Cloudlets and send them to broker
-            vmList = createVM(brokerId, Constants.NO_OF_DATA_CENTERS);
+            vmList = createVM(brokerId, Constants.NO_OF_VMS, Constants.NO_OF_DATA_CENTERS);
             cloudletList = createCloudlet(brokerId, Constants.NO_OF_TASKS, 0);
 
             broker.submitVmList(vmList);
