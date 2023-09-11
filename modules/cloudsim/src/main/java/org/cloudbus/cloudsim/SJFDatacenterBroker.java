@@ -22,7 +22,7 @@ public class SJFDatacenterBroker extends DatacenterBroker {
 
         for (int i = 0; i < reqTasks; i++) {
             bindCloudletToVm(i, (i % reqVms));
-            System.out.println("Task" + cloudletList.get(i).getCloudletId() + " is bound with VM" + vmList.get(i % reqVms).getId());
+            Log.printLine("Task" + cloudletList.get(i).getCloudletId() + " is bound with VM" + vmList.get(i % reqVms).getId());
         }
 
         //System.out.println("reqTasks: "+ reqTasks);
@@ -91,6 +91,7 @@ public class SJFDatacenterBroker extends DatacenterBroker {
                 + " received");
         cloudletsSubmitted--;
         if (getCloudletList().size() == 0 && cloudletsSubmitted == 0) {
+            Log.printLine("All cloudlets submitted");
             scheduleTaskstoVms();
             cloudletExecution(cloudlet);
         }
