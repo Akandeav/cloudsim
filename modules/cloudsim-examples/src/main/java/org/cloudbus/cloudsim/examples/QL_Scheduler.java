@@ -152,6 +152,10 @@ public class QL_Scheduler {
         double totalCompletionTime=0;
         double totalCost=0;
         double totalWaitingTime=0;
+        double totalResponseTime=0;
+        double minResponseTime=1000000;
+        double maxResponseTime=0;
+        double cloudletSize=0;
         //-------------------------
         
         DecimalFormat dft = new DecimalFormat("####.##");
@@ -166,6 +170,7 @@ public class QL_Scheduler {
                 //HERE:
                 double completionTime= cloudlet.getActualCPUTime()+ cloudlet.getWaitingTime();
                 double cost= cloudlet.getCostPerSec()* cloudlet.getActualCPUTime() ;
+                double responseTime = cloudlet.getFinishTime() - cloudlet.getExecStartTime();
                 //Note: the execution time for a task is cloudlet.getActualCPUTime()
                 //----------------------
                 Log.printLine(indent + indent + dft.format(cloudlet.getResourceId()) +
@@ -180,7 +185,10 @@ public class QL_Scheduler {
                 totalCompletionTime += completionTime;
                 totalCost += cost;
                 totalWaitingTime += cloudlet.getWaitingTime();
-                
+                totalResponseTime += responseTime;
+                if (responseTime > maxResponseTime) maxResponseTime = responseTime;
+                if (responseTime < minResponseTime) minResponseTime = responseTime;
+                if (i == 0) cloudletSize = cloudlet.getCloudletFileSize();
                 //-----------------------------------------
             }
         }
@@ -191,6 +199,11 @@ public class QL_Scheduler {
         Log.printLine("Total Completion Time: " + totalCompletionTime +" Avg Completion Time: "+ (totalCompletionTime/size));
         Log.printLine("Total Cost : " + totalCost+ " Avg cost: "+ (totalCost/size));
         Log.printLine("Avg Waiting Time: "+ (totalWaitingTime/size));
+        Log.printLine("Total response Time: " + totalResponseTime);
+        Log.printLine("Avg. response Time: "+ (totalResponseTime/size));
+        Log.printLine("Min. response Time: " + minResponseTime);
+        Log.printLine("Max. response Time: " + maxResponseTime);
+        Log.printLine("Throughput: " + (cloudletSize * size) / totalCompletionTime);
     }
 
     private static double calcMakespan(List<Cloudlet> list) {
