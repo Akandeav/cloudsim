@@ -1,0 +1,7 @@
+{
+    "java.dependency.packagePresentation": "hierarchical",
+    "java.project.referencedLibraries": [
+        "library/**/*.jar",
+        "/Users/mac/Documents/cloudsim/modules/cloudsim-examples/jswarm-pso_2_08.jar"
+    ]
+}
