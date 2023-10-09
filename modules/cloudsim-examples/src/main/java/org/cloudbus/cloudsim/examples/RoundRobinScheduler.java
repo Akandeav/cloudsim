@@ -156,24 +156,24 @@ public class RoundRobinScheduler {
         dft.setMinimumIntegerDigits(2);
         for (int i = 0; i < size; i++) {
             cloudlet = list.get(i);
-            Log.print(indent + dft.format(cloudlet.getCloudletId()) + indent + indent);
+            //Log.print(indent + dft.format(cloudlet.getCloudletId()) + indent + indent);
 
             if (cloudlet.getCloudletStatus() == Cloudlet.SUCCESS) {
-                Log.print("SUCCESS");
+            //    Log.print("SUCCESS");
                 
                 //HERE:
                 double completionTime= cloudlet.getActualCPUTime()+ cloudlet.getWaitingTime();
                 double cost= cloudlet.getCostPerSec()* cloudlet.getActualCPUTime() ;
                 //Note: the execution time for a task is cloudlet.getActualCPUTime()
                 //----------------------
-                Log.printLine(indent + indent + dft.format(cloudlet.getResourceId()) +
-                        indent + indent + indent + dft.format(cloudlet.getVmId()) +
-                        indent + indent +indent + dft.format(cloudlet.getActualCPUTime()) +
-                        indent + indent + dft.format(cloudlet.getExecStartTime()) +
-                        indent + indent  +indent+indent+ dft.format(cloudlet.getFinishTime())+
-                        indent + indent  +indent+ dft.format(cloudlet.getWaitingTime() )+
-                        indent + indent  + dft.format(completionTime )+
-                        indent + indent + dft.format(cost));
+            //    Log.printLine(indent + indent + dft.format(cloudlet.getResourceId()) +
+            //            indent + indent + indent + dft.format(cloudlet.getVmId()) +
+            //            indent + indent +indent + dft.format(cloudlet.getActualCPUTime()) +
+            //            indent + indent + dft.format(cloudlet.getExecStartTime()) +
+            //            indent + indent  +indent+indent+ dft.format(cloudlet.getFinishTime())+
+            //            indent + indent  +indent+ dft.format(cloudlet.getWaitingTime() )+
+            //            indent + indent  + dft.format(completionTime )+
+            //            indent + indent + dft.format(cost));
                 //HERE:
                 totalCompletionTime += completionTime;
                 totalCost += cost;
